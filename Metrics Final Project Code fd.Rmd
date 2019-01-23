@@ -2,7 +2,7 @@
 title: 'Metrics Final Project: Code'
 author: "Noam Benkler, Kent Hanson, Abbie Smith"
 date: "May 14, 2018"
-output: html_document
+output: github_document
 header-includes:
   \setlength{\parindent}{4em}
   \setlength{\parskip}{0em}
