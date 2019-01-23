@@ -77,9 +77,8 @@ Kentor and Jorgenson [-@Kentor2017] examined the effect that increased military 
 ##<a id="Data_Description_and_Visualization"></a>Data Description and Visualization
 ```{r, echo = FALSE, message=FALSE, warning= FALSE, error=FALSE}
 #loading in data
-metricsProj <- read.csv("C:/Users/ASUS/Dropbox/Carleton/Sophomore Year/Spring Term/Econometrics/Econ_329/Final Project/Metrics Project Data(1).csv")
+metricsProj <- read.csv("Metrics Project Data(1).csv")
 metricsProj$continent <- as.factor(countrycode(sourcevar = metricsProj[, "country"], origin = "country.name", destination = "continent"))
-View(metricsProj)
 
 #filter year > 1995 b/c no good data for HIV death rates and Education rates before 1995
 metricsProj <- metricsProj %>% filter(year >= 1995) %>% mutate(GDP = GDP/1000000000)
@@ -208,7 +207,6 @@ metricsProj %>%
 
 #Resid plot with GDP as color
 metricsProjFN.residplot <- augment(projFN.lm, metricsProjNew)
-View(metricsProjFN.residplot)
 metricsProjFN.residplot %>% ggplot(aes(.fitted, .resid, color = continent)) +
   geom_point() +
   labs(x = "Fitted Values",
