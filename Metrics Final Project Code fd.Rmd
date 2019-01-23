@@ -6,7 +6,7 @@ output: github_document
 header-includes:
   \setlength{\parindent}{4em}
   \setlength{\parskip}{0em}
-bibliography: C:/Users/ASUS/Downloads/library.bib
+bibliography: library.bib
 ---
 ####Table of Contents
 [Abstract](#Abstract)
