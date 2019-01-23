@@ -1,0 +1,358 @@
+---
+title: 'Metrics Final Project: Code'
+author: "Noam Benkler, Kent Hanson, Abbie Smith"
+date: "May 14, 2018"
+output: html_document
+header-includes:
+  \setlength{\parindent}{4em}
+  \setlength{\parskip}{0em}
+bibliography: C:/Users/ASUS/Downloads/library.bib
+---
+####Table of Contents
+[Abstract](#Abstract)
+
+[Research Question and Hypothesis](#Research_Question_and_Hypothesis)
+
+[Theory](#Theory)
+
+[Previous Work](#Previous_Work)
+
+[Data Description and Visualization](#Data_Description_and_Visualization)
+
+[Econometric Model and Basic Results](#Econometric_Model_and_Basic_Results)
+
+[Robustness](#Robustness)
+
+[Limitations and Future Work](#Limitations_and_Future_Work)
+
+[Appendix](#Appendix)
+
+[Bibliography](#Bibliography)
+
+
+
+
+```{r setup, include=FALSE, echo = FALSE, message=FALSE, warning= FALSE, error=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(collapse=TRUE, comment=NULL)
+
+library(dplyr)
+library(ggplot2)
+library(broom)
+library(stargazer)
+library(tidyr)
+library(car)
+library(GGally)
+library(MASS)
+library(readxl)
+library(lmtest)
+library(ggformula)
+library(car)
+library(broom)
+library(tseries)
+library(orcutt)
+library(sandwich)
+library(zoo)
+library(gapminder)
+library(gap)
+library(tidyverse)
+library(plm)
+library(countrycode)
+```
+##<a id="Abstract"></a>Abstract
+The political debate over how much to spend on military funding grows more heated as President Trump plans to increase the defense budget. This essay seeks to determine effects that military expenditures may have on life expectancy. We hypothesize that increases in military expenditures correspond to decreases in life expectancy and find that there is a statistically significant (p<0.01) negative relationship between life expectancy and military expenditures. We find that a 1% increase in a country's military expenditures is associated with a 0.623 year drop in that country's mean life expectancy. Using r studio, we perform exploratory analysis on our data and regress life expectancy against military expenditures, GDP, healthcare expenditures, and mean years in school for men. We conduct tests for significance, heteroskedasticity, correlation, and autocorrelation to determine the accuracy and value of our results. The data is compiled from Gapminder (https://www.gapminder.org/data/) and cleaned in r studio.
+
+##<a id="Research_Question_and_Hypothesis"></a>Research Question and Hypothesis
+In this paper we consider the relationship between life expectancy and military expenditures. How does a country’s life expectancy change based on their military expenditure? Considering GDP, mean years in school, and healthcare expenditures allows one to more precisely estimate the effect of military expenditure on life expectancy. We hypothesize that increases in military expenditures correspond to decreases in life expectancy. We are aware of the positive relationship between increased GDP and increased life expectancy and we know that an increase in military expenditure does not increase GDP. Thus, we believe that an increase in military expenditure would not increase life expectancy. Additionally, an increased military expenditure could suggest that the country is experiencing more war and violence, therefore resulting in a higher mortality rate and decreasing their life expectancy. 
+
+##<a id="Theory"></a>Theory
+According to the Keynesian model, increases in government spending increases GDP and serves as a pillar of support during financial crisis. Moreover, government spending towards military has a smaller multiplier effect than spending directly into infrastructure, unemployment benefits, and education. Therefore, the benefits to GDP are mitigated. GDP is positively related to life expectancy, consequently the negative relationship between military spending and life expectancy could lead to inefficiency of investing government spending on military funding.
+
+##<a id="Previous_Work"></a>Previous Work
+The relationship between military expenditure and life expectancy has not been heavily studied. However, by understanding the relationship between life expectancy and GDP and between GDP and military expenditure, we can hypothesize the relationship between life expectancy and military expenditure. Kentor and Kick [-@Kentor2008] examine the effect that military expenditures per soldier have on per capita GDP growth in a variety of countries. They find that military expenditures inhibit the growth of per capita GDP, and that the effect is more pronounced in less developed countries. Additionally, the labor force expansion is slowed and the available investment capital goes towards the military rather than more productive economic opportunities. Mahumud et al. [-@Mahumud2013] provide evidence to suggest that an increase in GDP is correlated with an increase in life expectancy. Therefore, the decrease in GDP growth seen in Kentor and Kick [-@Kentor2008] due to increased military expenditure could cause decreases in life expectancy.
+
+Kentor and Jorgenson [-@Kentor2017] examined the effect that increased military expenditures in high-tech, capital-intensive armaments had on the under- five mortality rate and life expectancy. This study uses cross-national panel models to  determine that increases in military expenditures increase the under-five mortality rate and decreases life expectancy. The study cites potential reasons for decreases in life expectancy. For instance, increases in expenditures decrease the number and type of soldiers able to take advantage of health-related resources and increase income inequality.
+
+
+##<a id="Data_Description_and_Visualization"></a>Data Description and Visualization
+```{r, echo = FALSE, message=FALSE, warning= FALSE, error=FALSE}
+#loading in data
+metricsProj <- read.csv("C:/Users/ASUS/Dropbox/Carleton/Sophomore Year/Spring Term/Econometrics/Econ_329/Final Project/Metrics Project Data(1).csv")
+metricsProj$continent <- as.factor(countrycode(sourcevar = metricsProj[, "country"], origin = "country.name", destination = "continent"))
+View(metricsProj)
+
+#filter year > 1995 b/c no good data for HIV death rates and Education rates before 1995
+metricsProj <- metricsProj %>% filter(year >= 1995) %>% mutate(GDP = GDP/1000000000)
+```
+Our data set consisted of 2,403 observations on 9 quantitative variables and 2 categorical variables: country (the country in question), continent (the continent to which a country belongs), year (the year to which the data applied), militaryexpenditures (the % of GDP a country spends on their military), lifeExp (average life expectancy in years), GDPpercap (GDP per capita in US dollars), GDP (GDP in billions of US dollars), HIV (the number of deaths due to HIV), healthcare (per capita total expenditure on health in US dollars), womenEd (the mean number of years spent in school for women over the age of 25), and menEd (the mean number of years spent in school for men over the age of 25). A summary of all the quantitative variables can be seen in Table 1.
+```{r, echo = FALSE, message=FALSE, warning= FALSE, error=FALSE}
+metricsProj %>%stargazer(type= "text", median=TRUE, digits=1, title = "Table 1: Summary Statistics of Dataset")
+```
+Histograms of each of the quantitative variables show strong skewness in all quantitative variables other than Life Expectancy, Men's Education, and Women's education. Logging these variables improves the normality of all these variables other than HIV. Histograms of all the variables and the necessary log-transformations can be seen in figures 1-13.
+```{r, echo = FALSE, message=FALSE, warning= FALSE, error=FALSE}
+gf_histogram( ~ lifeExp, data = metricsProj, title = "Figure 1: Histogram of Variable Life Expectancy", xlab = "Life Expectancy (years)")
+
+gf_histogram( ~ militaryexpenditures, data = metricsProj, title = "Figure 2: Histogram of Variable Military Expenditure", xlab = "Military Expenditure (% of GDP)")
+gf_histogram( ~ log(militaryexpenditures), data = metricsProj, title = "Figure 3: Histogram of log(Military Expenditure)", xlab = "log(Military Expenditure)")
+
+gf_histogram( ~ GDP, data = metricsProj, title = "Figure 4: Histogram of Variable GDP", xlab = "GDP ($1,000,000,000)")
+gf_histogram( ~ log(GDP), data = metricsProj, title = "Figure 5: Histogram of log(GDP)", xlab = "log(GDP)")
+
+gf_histogram( ~ GDPpercap, data = metricsProj, title = "Figure 6: Histogram of Variable GDP Per Capita", xlab = "GDP Per Capita ($)")
+gf_histogram( ~ log(GDPpercap), data = metricsProj, title = "Figure 7: Histogram of log(GDP Per Capita)", xlab = "log(GDP Per Capita)")
+
+gf_histogram( ~ HIV, data = metricsProj, title = "Figure 8: Histogram of Variable HIV", xlab = "HIV (Deaths Per Year)")
+gf_histogram( ~ log(HIV), data = metricsProj, title = "Figure 9: Histogram of log(HIV)", xlab = "log(HIV)")
+
+gf_histogram( ~ healthcare, data = metricsProj, title = "Figure 10: Histogram of Variable Healthcare", xlab = "Healthcare (Per Capita Health Expenditure per Constant US $)")
+gf_histogram( ~ log(healthcare), data = metricsProj, title = "Figure 11: Histogram of log(Healthcare)", xlab = "log(Healthcare)")
+
+gf_histogram( ~ menEd, data = metricsProj, title = "Figure 11: Histogram of Variable Men's Education", xlab = "Men's Education (Mean Years in school, aged 25 years or more)")
+
+gf_histogram( ~ womenEd, data = metricsProj, title = "Figure 13: Histogram of Variable Women's Education", xlab = "Women's Education (Mean Years in school, aged 25 years or more)")
+```
+
+Figures 14 through 20 show plots of each variable against life expectancy. All of the variables other than HIV and Military Expenditures appeared to have definite associations with Life Expectancy. We decided to test whether or not there was any association between countries' military expenditures and their mean life expectancy.
+
+```{r, echo = FALSE, message=FALSE, warning= FALSE, error=FALSE}
+ggplot(data = metricsProj) + 
+  geom_point(mapping = aes(y = lifeExp, x = log(militaryexpenditures))) + labs(title = "Figure 14: Scatterplot of Life Expectancy by log(Military Expenditures)", x = "log(Military Expenditure (% of GDP))", y = "Life Expectancy (years)")
+
+ggplot(data = metricsProj) + 
+  geom_point(mapping = aes(y = lifeExp, x = log(GDPpercap))) + labs(title = "Figure 15: Scatterplot of Life Expectancy by log(GDP per capita)", x = "log(GDP per capita (USD))", y = "Life Expectancy (years)")
+
+ggplot(data = metricsProj) + 
+  geom_point(mapping = aes(y = lifeExp, x = log(GDP))) + labs(title = "Figure 16: Scatterplot of Life Expectancy by log(GDP)", x = "log(GDP (USD))", y = "Life Expectancy (years)")
+
+ggplot(data = metricsProj) + 
+  geom_point(mapping = aes(y = lifeExp, x = log(HIV))) + labs(title = "Figure 17: Scatterplot of Life Expectancy by log(HIV)", x = "log(HIV (number of deaths))", y = "Life Expectancy (years)")
+
+ggplot(data = metricsProj) + 
+  geom_point(mapping = aes(y = lifeExp, x = log(healthcare))) + labs(title = "Figure 18: Scatterplot of Life Expectancy by log(Healthcare Expenditure per capita)", x = "log(Healthcare Expenditure per capita (USD))", y = "Life Expectancy (years)")
+
+ggplot(data = metricsProj) + 
+  geom_point(mapping = aes(y = lifeExp, x = womenEd)) + labs(title = "Figure 19: Scatterplot of Life Expectancy by Womens Education", x = "Women's Education (Years in School))", y = "Life Expectancy (years)")
+
+ggplot(data = metricsProj) + 
+  geom_point(mapping = aes(y = lifeExp, x = menEd)) + labs(title = "Figure 20: Scatterplot of Life Expectancy by Mens Education", x = "Men's Education (Years in School))", y = "Life Expectancy (years)")
+```
+
+
+##<a id="Econometric_Model_and_Basic_Results"></a>Econometric Model and Basic Results
+To begin with, we create a model excluding the variables GDPpercapita, HIV, and womensEd due to problems with multicollinearity and normality (for explanation see Appendix part: "Model selection") and conduct a Hausman test in order to see whether it's necessary for us to model our data using a fixed effects model accounting for country as a factor or whether a pooled model would be sufficient. The results are shown in Tables 2 and 3. 
+```{r, echo = FALSE, message=FALSE, warning= FALSE, error=FALSE}
+metricsProjNew <- metricsProj[-c(737),]
+projF.lm <- glm(lifeExp ~ log(militaryexpenditures) + log(GDP) + log(healthcare) + menEd + factor(country), data = metricsProjNew)
+#Hausman test
+#  H-test shows fixed effects model necessary 
+
+pooled = plm(lifeExp ~ log(militaryexpenditures) + log(GDP) + log(healthcare) + menEd, 
+             data = metricsProj, 
+             model = "pooling", 
+             index = c("country", "year"))
+
+within = plm(lifeExp ~ log(militaryexpenditures) + log(GDP) + log(healthcare) + menEd, 
+             data = metricsProj, 
+             model = "within", 
+             index = c("country", "year"))
+
+random = plm(lifeExp ~ log(militaryexpenditures) + log(GDP) + log(healthcare) + menEd, 
+             data = metricsProj, 
+             model = "random",
+             index = c("country", "year"))
+
+stargazer(pooled, within, random, type = "text", column.labels = c("Pooled", "Fixed Effects", "Random Effects"), title = "Table 2: Regression summary for Pooled, Fixed Effects, and Random Effects models")
+```
+```{r, echo = FALSE, message=FALSE, warning= FALSE, error=FALSE}
+#phtest(random, within)
+stargazer(tidy(phtest(random, within)), type = "text", title = "Table 3: Output of Hausman Test")
+```
+With a p-value $\approx$ 0 we have sufficient evidence to conclude that a pooled model would be insufficient. We arrive at the fixed effects model: $lifeExp = \beta_0 + \beta_1factor(country) + \beta_2log(militaryExp)+\beta_3log(GDP)+\beta_4log(healthcare)+menEd$).
+
+We remain confident in this model despite its markedly high VIF statistics (Table 5) because of low VIF values between all the explanatory variables in a pooled version of the same model (Table 4). Given this we surmise the increase in the VIF statistics is due to the collinear relationship between the factor variable and all the other variables. Moreover, We choose to treat data point 737 as a potential outlier and remove it from our model because of its significant Cook's distance (Figure 21).
+```{r, echo = FALSE, message=FALSE, warning= FALSE, error=FALSE}
+proj3.lm <- lm(lifeExp ~ log(militaryexpenditures) + log(GDP) + log(healthcare) + menEd, data = metricsProj)
+
+
+projFN.lm <- glm(lifeExp ~ log(militaryexpenditures) + log(GDP) + log(healthcare) + menEd + factor(country), data = metricsProjNew)
+#vif for pooled lm
+stargazer(vif(proj3.lm), type = "text", title = "Table 4: VIF values for Model without factor(country)")
+```
+```{r, echo = FALSE, message=FALSE, warning= FALSE, error=FALSE}
+#vif for fixed eff
+stargazer(vif(projFN.lm), type = "text", title = "Table 5: VIF statistics for Fixed Effects Model")
+```
+```{r, echo = FALSE, message=FALSE, warning= FALSE, error=FALSE}
+influenceIndexPlot(projF.lm, vars = c("Studentized", "Cook") , main = "Figure 21: Influencial Index Plots for Model with Data Point 737")
+
+metricsProjNew <- metricsProj[-c(737),]
+projFN.lm <- glm(lifeExp ~ log(militaryexpenditures) + log(GDP) + log(healthcare) + menEd + factor(country), data = metricsProjNew)
+
+projF.plm <- plm(lifeExp ~ log(militaryexpenditures) + log(GDP) + log(healthcare) + menEd + factor(country), data = metricsProjNew)
+
+stargazer(projFN.lm, projF.plm, type = "text", omit = "factor", title = "Table 6: Model Coefficients for Final Fixed Effects Model (In Both GLM and PLM Form)")
+```
+```{r, echo = FALSE, message=FALSE, warning= FALSE, error=FALSE}
+stargazer(confint(projFN.lm, "log(militaryexpenditures)" , level = 0.99), type = "text", title = "Table 7: Confidence Interval for the Coefficient of log(militaryexpenditures)")
+```
+Our final fixed effects model suggests that all else held constant, a 1% increase in a country's military expenditures is associated with a 0.623 year drop in that country's mean life expectancy, with a standard error of 0.136 that implies our coefficient is significantly different from 0 (over 4.58 times the SE away). All else set equal to 0 the average life expectancy in each country is 38.0 years $+$ whatever $\beta_1factor(country)$ is for each country (can be seen in Appendix Table 13). With 99% confidence the true mean coefficient of log(militaryexpenditures) is between -0.973 and -0.273. Furthermore, if we were to repeat this experiment over and over then we would expect that 99% percent of confidence intervals constructed this way would contain the true mean coefficient of log(militaryexpenditures). Finally, we find that our model explained approximately 32.0% of the variation in Y. 
+```{r, echo = FALSE, message=FALSE, warning= FALSE, error=FALSE}
+metricsProj %>%
+  ggplot(aes(x = log(militaryexpenditures), y = lifeExp)) +
+  geom_point() +
+  xlab("Military Expenditure (% of GDP), log scale") + 
+  ylab("Life expectancy (years)") +
+  labs(title = "Figure 22: Log(Military Expenditures) vs. Life Expectancy after 1995",
+       color = "GDP") +
+  geom_smooth(method = "lm")
+
+#Resid plot with GDP as color
+metricsProjFN.residplot <- augment(projFN.lm, metricsProjNew)
+View(metricsProjFN.residplot)
+metricsProjFN.residplot %>% ggplot(aes(.fitted, .resid, color = continent)) +
+  geom_point() +
+  labs(x = "Fitted Values",
+       y = "Residuals",
+       title = "Figur 23: Residual Plot for Fixed Effects Model") +
+  geom_smooth(method = "lm")
+```
+
+Despite the significant slope coefficeint for $\beta_2$, our plot of the military expenditures against life expectancy (Figure 22) shows little indication of any relationship between the two variables. The residuals plot of our model (Figure 23) shows strong evidence of heteroskedasticity.
+
+##<a id="Robustness"></a>Robustness 
+In order to test the robustness of our model we first look at correcting the apparent heteroskedasticity in our fixed model. To do so, we conduct a Breusch-Pagan tests for heteroskedasticity which gives a p-value $\approx$ 0 (Table 8) indicating significant heteroskedasticity in our model
+```{r, echo = FALSE, message=FALSE, warning= FALSE, error=FALSE}
+#Heteroskedastisity tests for Fixed model
+
+#Breusch-Pagan test
+#bptest(projFN.lm)
+stargazer(tidy(bptest(projFN.lm)), type = "text", title = "Table 8: Results of Breusch-Pagan test")
+```
+Given the apparent heteroskedasticity in our model we compare our fixed effects model's standard errors to the robust standard errors and OLS standard errors in order to determine whether or not we need to adjust our standard errors to account for heteroskedasticity. We find that we do not need to adjust our standard errors because they are similar to one another and do not influence the significance of the model.
+```{r, echo = FALSE, message=FALSE, warning= FALSE, error=FALSE}
+#White's heteroskedasticity tests compared to OLS
+projFN.hccm <- coeftest(projFN.lm, vcov = hccm(projFN.lm))
+projFN.hccmhc0 <- coeftest(projFN.lm, vcov = hccm(projFN.lm, type = "hc0"))
+stargazer(projFN.lm, projFN.hccm, projFN.hccmhc0,
+          type = "text",
+          omit = "factor",
+          model.names = FALSE,
+          column.labels = c("OLS", "hccm default", "hccm White"), title = "Table 9: Model Coefficients and Errors for OLS, Fixed Model, and White's Model")
+```
+To test whether our model showed signs of auto correlation we conduct a Durbin-Watson test on our model, which gives us a p-value of 0.97 (Table 10), thus we cannot reject the null hypothesis of the model having an autocorrelation value equal to 0.
+```{r, echo = FALSE, message=FALSE, warning= FALSE, error=FALSE}
+#dwtest
+stargazer(tidy(dwtest(projFN.lm)), type = "text", title = "Table 10: Results of Durbin-Watson test")
+```
+Regarding the estimation of other models, we find that using a pooled model for our data would be insufficient (Table 3). Though using a stepwise selection process on all of the variables included in our dataset provide a different model then ours (Table 11), with a higher $R^2$ value (0.817), we believe our model is more accurate becasue the stepwise model does not take country into account as an influential factor, which our Hausman test determines to be the case. Furthermore, the vif values for the new model (Table 12) show that log(GDP) and log(GDPpercapita) are not highly correlated with one another, which we believe to be innacurate. Finally, based on Figures 9 and 17 we do not believe using the variable HIV is conducive to finding an accurate model. 
+
+```{r, echo = FALSE, message=FALSE, warning= FALSE, error=FALSE}
+metricsProjStepwise <- na.omit(metricsProjNew)
+null_mod <- lm(lifeExp ~ 1, data = metricsProjStepwise)
+lm.step <- stepAIC(null_mod, scope = list(lower = ~ 1, upper = ~ year + log(militaryexpenditures) + log(GDPpercap) + log(GDP) + log(healthcare) + log(HIV) + menEd + womenEd), direction = "both" , trace=0)
+stargazer(lm.step, type = "text", title = "Table 11: Model Coefficients for Stepwise Model")
+```
+```{r, echo = FALSE, message=FALSE, warning= FALSE, error=FALSE}
+stargazer(vif(lm.step), type = "text", title = "Table 12: VIF values for Stepwise Model")
+```
+
+##<a id="Limitations_and_Future_Work"></a>Limitations and Future Work
+Our model is far from perfect. The variables we use cannot fully explain the changes we see in life expectancy across countries. We fail to account for the different types of military expenditure, such as technology or wages,  as different countries could be allocating their expenditure differently. We also fail to account for countries that are at war. A country that goes to war will increase their military spending and we would expect a country at war to have a lower life expectancy than their norm. This is likely pushing our coefficient on military spending to be more negative. Additionally, as we use military expenditure as a percentage of GDP, a country with a small GDP at war or with its neighbors at war will have a significantly inflated military expenditure. There may also be more advanced models that we failed to consider when analyzing our data. We also fail to take into account inter-country relationships that may skew the data. If we were to do this experiment again, we might have looked more closely into the stepwise model, and tried several other model selection processees to determine whether a different combination of variables could have resulted in a more accurate model. 
+
+If we were to conduct further research on this subject, there are a variety of ideas and variables that would be valuable to consider. Adding utility to the model could help us understand whether military expenditures affected countries in ways other than life expectancy. It would also be interesting to consider how the model changes when a country is at peace versus in active conflict, and how the mortality rate for men aged 18 to 30 changes with both war and increased military expenditure. Considering intra-country violence and crime could allow us to consider how much of a country’s military efforts are focused within its own borders. This could also allow an interesting comparison of wage expenditure versus technological expenditure. Including a dummy variable for first and third world countries could also create an interesting relationship between the amount that a country spend on military and their level of development. These variables would allow us to create a more precise model of what parts of military expenditure affect life expectancy and how countries could use this data to further growth.
+
+
+##<a id="Appendix"></a>Appendix
+
+```{r, echo = FALSE, message=FALSE, warning= FALSE, error=FALSE}
+projFN.lm <- glm(lifeExp ~ log(militaryexpenditures) + log(GDP) + log(healthcare) + menEd + factor(country), data = metricsProjNew)
+stargazer(projFN.lm, type = "text", omit = c("militaryexpenditures", "GDP", "healthcare", "menEd"), title = "Table 13: Additional Effect of factor(country) on Constant")
+```
+
+
+####Model Selection:
+First we examine an unrestricted model with all the explanatory variables included
+```{r, echo = FALSE, message=FALSE, warning= FALSE, error=FALSE}
+#first model
+proj1.lm <- lm(lifeExp ~ log(militaryexpenditures) + log(GDP) + log(GDPpercap) + log(healthcare) + log(HIV) + menEd + womenEd, data = metricsProj)
+stargazer(proj1.lm, type = "text", title = "Table 14: Model Coefficients for Unrestricted Model")
+```
+```{r, echo = FALSE, message=FALSE, warning= FALSE, error=FALSE}
+stargazer(vif(proj1.lm), type = "text", title = "Table 15: VIF values for Unrestricted Model")
+```
+  We decide to exclude HIV death rates from our model in favor of healthcare expenditures due to the skewed nature of the HIV data, whether logged or unlogged. We exclude the GDP Per Capita variable in favor of GDP due GDP Per Capita's high VIF value (Table 15) and exclude Women's Education in favor of Men's education because of high multicollinearity between the two (Table 15) and because Men's education appears to be more normally distributed (Figure 20).
+
+```{r, echo = FALSE, message=FALSE, warning= FALSE, error=FALSE}
+#final model
+proj3.lm <- lm(lifeExp ~ log(militaryexpenditures) + log(GDP) + log(healthcare) + menEd, data = metricsProj)
+summary(proj3.lm)
+```
+
+We arrive at the final pooled model( Model 1:$lifeExp = \beta_1 + \beta_2log(militaryExp)+\beta_3log(GDP)+\beta_4log(healthcare)+menEd$ )
+We chose not to remove any potential outliers from our model as the edited model shows just as many, if not more, outliers after being edited, and any continued effort to remove potential outliers could negatively effect our data.
+```{r, echo = FALSE, message=FALSE, warning= FALSE, error=FALSE}
+#final model
+proj3.lm <- lm(lifeExp ~ log(militaryexpenditures) + log(GDP) + log(healthcare) + menEd, data = metricsProj)
+stargazer(proj3.lm, type = "text", title = "Table 16: Coefficients for Model 1")
+influenceIndexPlot(proj3.lm, main = "Figure 24: Influencial Index Plots for Model 1")
+
+metricsProjNew1 <- metricsProj[-c(737, 1294),]
+projN.lm <- lm(lifeExp ~ log(militaryexpenditures) + log(GDP) + log(healthcare) + menEd, data = metricsProjNew1)
+influenceIndexPlot(projN.lm, main = "Figure 25: Influencial Index Plots for Model After Removing Data Point 737")
+```
+```{r, echo = FALSE, message=FALSE, warning= FALSE, error=FALSE}
+#vif for final lm
+stargazer(vif(proj3.lm), type = "text", title = "Table 17: VIF values for Model 1")
+```
+
+```{r, echo = FALSE, message=FALSE, warning= FALSE, error=FALSE}
+#Model plot military v. life exp, 
+metricsProj %>%
+  ggplot(aes(x = log(militaryexpenditures), y = lifeExp)) +
+  geom_point() +
+  xlab("Military Expenditure (% of GDP), log scale") + 
+  ylab("Life expectancy (years)") +
+  labs(title = "Figure 26:Log(Military Expenditures) vs. Life Expectancy after 1995",
+       color = "GDP") +
+  geom_smooth(method = "lm")
+
+metricsProj  %>% 
+  ggplot(aes(x = log(militaryexpenditures), y = lifeExp, color = continent)) +
+  geom_point() +
+  facet_wrap( ~ continent) +
+  xlab("Military Expenditure (% of GDP), log scale") + 
+  ylab("Life expectancy (years)") +
+  labs(title = "Figure 27:Log(Military Expenditures) vs. Life Expectancy after 1995 Split by Continent",
+       color = "GDP") +
+  geom_smooth(method = "lm")
+```
+
+```{r, echo = FALSE, message=FALSE, warning= FALSE, error=FALSE}
+#resid plot w/ and w/o color
+proj3.lm %>% ggplot(aes(.fitted, .resid)) +
+  geom_point() + labs(title = "Figure 28: Residuals Plot of Life EXP vs. log(Military Expenditures) in Pooled Model",
+       color = "GDP")
+
+#Resid plot with GDP as color
+metricsProj2.residplot <- augment(proj3.lm, metricsProj)
+metricsProj2.residplot %>% ggplot(aes(.fitted, .resid, color = continent)) +
+  geom_point() +
+  labs(x = "Fitted Values",
+       y = "Residuals",
+       title = "Figure 29: Residual Plot of Life EXP vs. log(Military Expenditures), Visualizing Continent") +
+  geom_smooth(method = "lm")
+```
+
+After examining the plots of our pooled model we see that there was enough variation in the model from continent to continent to justify creating a fixed effects model using country as our influence factor. We choose to use a generalized linear model factoring for country rather than a paneled linear model because, while both models presented us with the same results, the generalized linear model allows us to more easily present our results graphically.
+
+```{r, echo = FALSE, message=FALSE, warning= FALSE, error=FALSE}
+#model with Factor variable country 
+projF.plm <- plm(lifeExp ~ log(militaryexpenditures) + log(GDP) + log(healthcare) + menEd + factor(country), data = metricsProjNew)
+stargazer(projFN.lm, projF.plm, type = "text", omit = "factor", title = "Table 18: Comparison Between GLM and PLM Form Model Coefficients for Final Fixed Effects Model")
+```
+
+
+##<a id="Bibliography"></a>Bibliography
+
+
+
