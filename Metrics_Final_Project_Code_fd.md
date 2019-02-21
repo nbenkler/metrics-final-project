@@ -1,6 +1,6 @@
 Metrics Final Project: Code
 ================
-Noam Benkler
+Noam Benkler, Kent Hanson, Abbie Smith
 May 14, 2018
 
 #### Table of Contents
